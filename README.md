@@ -1,6 +1,6 @@
 # glosat-best-fit-means
 
-Python codebase for construction of optimal baseline normals from neighbouring station timeseries overlaps. Part of ongoing work for the [GloSAT](https://www.glosat.org) project: www.glosat.org. 
+Python codebase for construction of optimal baseline normals from neighbouring station timeseries overlaps. Part of ongoing work for the [GloSAT](https://www.glosat.org) project: www.glosat.org 
 
 ## Contents
 
