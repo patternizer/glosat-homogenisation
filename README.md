@@ -17,13 +17,13 @@ The first step is to clone the latest glosat-best-fit-means code and step into t
     $ git clone https://github.com/patternizer/glosat-best-fit-means.git
     $ cd glosat-best-fit-means
 
-Then create a DATA/ directory and copy to it the required inventories listed in python glosat-best-fit-means.
+Then create a DATA/ directory and copy to it the required input dataset listed in python glosat-best-fit-means-auto.
 
 ### Using Standard Python
 
 The code is designed to run in an environment using Miniconda3-latest-Linux-x86_64.
 
-    $ python best-fit-means.py
+    $ python best-fit-means-auto.py
 
 ## License
 
