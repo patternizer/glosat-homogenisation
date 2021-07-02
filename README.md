@@ -1,10 +1,14 @@
+![image](https://github.com/patternizer/glosat-best-fit-means/blob/master/model-1-fit-blue_hill-blue_hill.png)
+![image](https://github.com/patternizer/glosat-best-fit-means/blob/master/models-monthly-normals-sterr-CASE-1A-1B-2A-blue_hill-blue_hill.png)
+
 # glosat-best-fit-means
 
 Python codebase for construction of optimal baseline normals from neighbouring station timeseries overlaps. Part of ongoing work for the [GloSAT](https://www.glosat.org) project: www.glosat.org 
 
 ## Contents
 
-* `best-fit-means.py` - python script to read in absolute land surface air temperature timeseries and estimate a baseline normal for short segments based on best fit means.
+* `best-fit-means.py` - python script to read in land surface air temperature timeseries and estimate a baseline normal for short segments based on best fit mean models using a reference station timeseries.
+* `best-fit-means-auto.py` - loop over list of neighbouring reference stations and store model errors.
 
 ## Instructions for use
 

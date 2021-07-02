@@ -333,7 +333,7 @@ df_normal = df[ (df.index>=normal_start) & (df.index<=normal_end) ]
 #------------------------------------------------------------------------------
 
 test_station = 'blue_hill'
-ref_station = 'west_medway'
+ref_station = 'amherst'
 
 df_ref_station = df[ref_station]
 df_ref_station_segment = df_segment[ref_station]
@@ -348,6 +348,18 @@ df_neighbours_mean = df_neighbours.mean(axis=1)
 df_neighbours_mean_segment = df_neighbours_segment.mean(axis=1)
 df_neighbours_mean_normal = df_neighbours_normal.mean(axis=1)
 
+# CALCULATE: expected 'true' monthly means from test station
+
+r1 = df_test_station_normal
+x1r_truth = []
+SE1r_truth = []
+for i in range(12):
+    
+    x1r = np.nanmean( r1[r1.index.month==(i+1)] )    
+    x1r_truth.append(x1r)
+    SE1r = np.nanstd( r1[r1.index.month==(i+1)] ) / np.sqrt( np.isfinite(r1[r1.index.month==(i+1)]).sum() )   
+    SE1r_truth.append(SE1r)
+    
 #------------------------------------------------------------------------------
 # MODEL 1: CASE 1A & CASE 1B: single reference: x1=test_station, x2=BHO (referemce_station)
 #------------------------------------------------------------------------------
@@ -372,16 +384,56 @@ x1r_CASE_2A, x1r_CASE_2B, SE1r_CASE_2A, SE1r_CASE_2B = calculate_normals_and_SEs
 x1r_CASE_2A_normal = pd.Series(np.tile(x1r_CASE_2A, reps=30), index=r2.index)
 x1r_CASE_2B_normal = pd.Series(np.tile(x1r_CASE_2B, reps=30), index=r2.index)
 
-if use_correlated == True:
+if use_correlated == True: # (default)
     x1r_CASE_1_normal = x1r_CASE_1B_normal
     x1r_CASE_2_normal = x1r_CASE_2B_normal
 else:
     x1r_CASE_1_normal = x1r_CASE_1A_normal
     x1r_CASE_2_normal = x1r_CASE_2A_normal    
 
+#------------------------------------------------------------------------------
+# STATISTICS: model versus truth monthly mean errors
+#------------------------------------------------------------------------------
+
+error_x1r_CASE_1A = np.nanmean( np.array(x1r_CASE_1A) - np.array(x1r_truth) )
+error_x1r_CASE_1B = np.nanmean( np.array(x1r_CASE_1B) - np.array(x1r_truth) )
+error_x1r_CASE_2A = np.nanmean( np.array(x1r_CASE_2A) - np.array(x1r_truth) )
+error_SE1r_CASE_1A = np.nanmean( np.array(SE1r_CASE_1A) - np.array(SE1r_truth) )
+error_SE1r_CASE_1B = np.nanmean( np.array(SE1r_CASE_1B) - np.array(SE1r_truth) )
+error_SE1r_CASE_2A = np.nanmean( np.array(SE1r_CASE_2A) - np.array(SE1r_truth) )
+
+X_1 = df_test_station.rolling(nsmooth,center=True).mean()                                           # BHO
+X_1a = X_1[ (X_1.index>=segment_start) & (X_1.index<=segment_end) ]                                 # BHO (segment)
+X_1r_truth = X_1[ (X_1.index>=normal_start) & (X_1.index<=normal_end) ]                             # BHO (normal) truth
+X_1r_estimate_CASE_1 = X_1r_truth + ( np.nanmean( x1r_CASE_1_normal ) - np.nanmean( X_1r_truth ) )  # BHO (normal) estimate (CASE_1)
+X_2_CASE_1 = df_ref_station.rolling(nsmooth,center=True).mean()                                     # single neighbour
+X_2a_CASE_1 = X_2_CASE_1[ (X_2_CASE_1.index>=segment_start) & (X_2_CASE_1.index<=segment_end) ]     # single neighbour (segment)
+X_2r_CASE_1 = X_2_CASE_1[ (X_2_CASE_1.index>=normal_start) & (X_2_CASE_1.index<=normal_end) ]       # single neighbour (normal)            
+error_CASE_1 = X_1r_estimate_CASE_1[0] -  X_1r_truth[0]                                             # error relative to expected true normal
+
+X_1 = df_test_station.rolling(nsmooth,center=True).mean()                                           # BHO
+X_1a = X_1[ (X_1.index>=segment_start) & (X_1.index<=segment_end) ]                                 # BHO (segment)
+X_1r_truth = X_1[ (X_1.index>=normal_start) & (X_1.index<=normal_end) ]                             # BHO (normal) truth
+X_1r_estimate_CASE_2 = X_1r_truth + ( np.nanmean( x1r_CASE_2_normal ) - np.nanmean( X_1r_truth ) )  # BHO (normal) estimate (CASE_2)
+X_2_CASE_2 = df_neighbours_mean.rolling(nsmooth,center=True).mean()                                 # All neighbours mean
+X_2a_CASE_2 = X_2_CASE_2[ (X_2_CASE_2.index>=segment_start) & (X_2_CASE_2.index<=segment_end) ]     # All neighbours mean (segment)
+X_2r_CASE_2 = X_2_CASE_2[ (X_2_CASE_2.index>=normal_start) & (X_2_CASE_2.index<=normal_end) ]       # All neighbours mean (normal)
+error_CASE_2 = X_1r_estimate_CASE_2[0] -  X_1r_truth[0]                                             # error relative to expected true normal
+
+df_errors = pd.DataFrame({
+    'ref_station':ref_station, 
+    'test_station':test_station, 
+    'error_x1r_CASE_1A':error_x1r_CASE_1A,
+    'error_x1r_CASE_1B':error_x1r_CASE_1B,
+    'error_x1r_CASE_2A':error_x1r_CASE_2A,
+    'error_SE1r_CASE_1A':error_SE1r_CASE_1A,
+    'error_SE1r_CASE_1B':error_SE1r_CASE_1B,
+    'error_SE1r_CASE_2A':error_SE1r_CASE_2A,    
+     }, index=[0])
+    
 #==============================================================================
 
-if plot_monthly == True:
+if plot_monthly == True: # one plot per ref_station
     
     # PLOT: monthly normals and standard errors
     
@@ -391,18 +443,20 @@ if plot_monthly == True:
     titlestr = r'Monthly $x_{1,r}$ and $SE_{1,r}$ (ref = ' + ref_station.title() + ') for test station = ' + test_station.title()
     
     fig, axs = plt.subplots(2,1, figsize=(15,10))
-    axs[0].plot(x1r_CASE_1A, marker='o', markersize=10, alpha=0.5, label=r'Model 1A: $\bar{X}_{1,r}$')
-    axs[0].plot(x1r_CASE_1B, marker='o', markersize=10, ls='None', alpha=0.5, label=r'Model 1B: $\bar{X}_{1,r}$')
-    axs[0].plot(x1r_CASE_2A, marker='o', markersize=10, alpha=0.5, label=r'Model 2A: $\bar{X}_{1,r}$')
+    axs[0].plot(x1r_truth, marker='s', markersize=20, fillstyle='none', linestyle='none', label=r'Truth: $\bar{X}_{1,r}$')
+    axs[0].plot(x1r_CASE_1A, marker='^', markersize=10, alpha=0.5, linestyle='none', label=r'Model 1A: $\bar{X}_{1,r}$ $\mu_{\epsilon}$=' + str(np.round(error_x1r_CASE_1A,2)) + '$^{\circ}$' + temperature_unit) 
+    axs[0].plot(x1r_CASE_1B, marker='v', markersize=10, alpha=0.5, linestyle='none', label=r'Model 1B: $\bar{X}_{1,r}$ $\mu_{\epsilon}$=' + str(np.round(error_x1r_CASE_1B,2)) + '$^{\circ}$' + temperature_unit) 
+    axs[0].plot(x1r_CASE_2A, marker='o', markersize=10, alpha=0.5, linestyle='none', label=r'Model 2A: $\bar{X}_{1,r}$ $\mu_{\epsilon}$=' + str(np.round(error_x1r_CASE_2A,2)) + '$^{\circ}$' + temperature_unit) 
     axs[0].set_xticks(np.arange(0,12))
     axs[0].set_xticklabels(np.arange(1,13))
     axs[0].tick_params(labelsize=fontsize)    
     axs[0].set_xlabel('Month', fontsize=fontsize)
     axs[0].set_ylabel(r'BFM: mean $X_{1,r}$, $^{\circ}$' + temperature_unit, fontsize=fontsize)
     axs[0].legend(loc='upper left', ncol=1, markerscale=1, facecolor='lightgrey', framealpha=0.5, fontsize=12)            
-    axs[1].plot(SE1r_CASE_1A, marker='o', markersize=10, alpha=0.5, label=r'Model 1A: $SE_{1,r}$')
-    axs[1].plot(SE1r_CASE_1B, marker='o', markersize=10, alpha=0.5, label=r'Model 1B: $SE_{1,r}$')
-    axs[1].plot(SE1r_CASE_2A, marker='o', markersize=10, alpha=0.5, label=r'Model 2A: $SE_{1,r}$')
+    axs[1].plot(SE1r_truth, marker='s', markersize=20, fillstyle='none', linestyle='none', label=r'Truth: $SE_{1,r}$')
+    axs[1].plot(SE1r_CASE_1A, marker='^', markersize=10, alpha=0.5, label=r'Model 1A: $SE_{1,r}$ $\mu_{\epsilon}$=' + str(np.round(error_SE1r_CASE_1A,2)) + '$^{\circ}$' + temperature_unit) 
+    axs[1].plot(SE1r_CASE_1B, marker='v', markersize=10, alpha=0.5, label=r'Model 1B: $SE_{1,r}$ $\mu_{\epsilon}$=' + str(np.round(error_SE1r_CASE_1B,2)) + '$^{\circ}$' + temperature_unit)
+    axs[1].plot(SE1r_CASE_2A, marker='o', markersize=10, alpha=0.5, label=r'Model 2A: $SE_{1,r}$ $\mu_{\epsilon}$=' + str(np.round(error_SE1r_CASE_2A,2)) + '$^{\circ}$' + temperature_unit)
     axs[1].sharex(axs[0]) 
     axs[1].set_xticks(np.arange(0,12))
     axs[1].set_xticklabels(np.arange(1,13))
@@ -412,7 +466,7 @@ if plot_monthly == True:
     axs[1].legend(loc='lower left', ncol=1, markerscale=1, facecolor='lightgrey', framealpha=0.5, fontsize=12)            
     if use_fahrenheit == True:
         axs[0].set_ylim(20,80)
-        axs[1].set_ylim(0.2,1.6)
+        axs[1].set_ylim(0,2)
     else:
         ax.set_xlim(-20,40)
         ax.set_ylim(0,0.05)    
@@ -421,35 +475,25 @@ if plot_monthly == True:
     plt.savefig(figstr, dpi=300)
     plt.close('all')
 
-if plot_fit_model_1 == True:
+if plot_fit_model_1 == True: # one plot per ref_station
     
-    X_1 = df_test_station.rolling(nsmooth,center=True).mean()                                        # BHO
-    X_1a = X_1[ (X_1.index>=segment_start) & (X_1.index<=segment_end) ]                              # BHO (segment)
-    X_1r_truth = X_1[ (X_1.index>=normal_start) & (X_1.index<=normal_end) ]                          # BHO (normal) truth
-    X_1r_estimate = X_1r_truth + ( np.nanmean( x1r_CASE_1_normal ) - np.nanmean( X_1r_truth ) )     # BHO (normal) estimate
-    X_2 = df_ref_station.rolling(nsmooth,center=True).mean()                                         # single neighbour
-    X_2a = X_2[ (X_2.index>=segment_start) & (X_2.index<=segment_end) ]                              # single neighbour (segment)
-    X_2r = X_2[ (X_2.index>=normal_start) & (X_2.index<=normal_end) ]                                # single neighbour (normal)            
-    error = X_1r_estimate[0] -  X_1r_truth[0]
-
     print('plotting MODEL 1 (single neighbour) Xr vs Xa ...')
         
     figstr = 'model-1-fit' + '-' + test_station + '-' + ref_station + '.png'
     titlestr = 'Model fit: $X_{r}$ vs $X_{a}$ (ref = ' + ref_station.title() + ') for test station = ' + test_station.title()
         
     fig, axs = plt.subplots(figsize=(15,10))
-#   axs.plot(df[ref_station].index, df[ref_station].rolling(nsmooth,center=True).mean().ewm(span=nsmooth, adjust=True).mean(), marker='.', color='lightgrey', alpha=1.0, label='$T_{g}$ ' + ref_station)
     axs.plot(X_1.index, X_1, marker='.', color='lightgrey', alpha=1, label='$T_{g}$ ' + test_station)
-    axs.plot(X_2a.index, X_2a, marker='.', color='lightblue', alpha=1, label='$X_{2,a}$ ' + ref_station + ' (segment)')
-    axs.plot(X_2r.index, X_2r, marker='.', color='pink', alpha=1, label='$X_{2,r}$ ' + ref_station + ' (1961-1990)')
+    axs.plot(X_2a_CASE_1.index, X_2a_CASE_1, marker='.', color='lightblue', alpha=1, label='$X_{2,a}$ ' + ref_station + ' (segment)')
+    axs.plot(X_2r_CASE_1.index, X_2r_CASE_1, marker='.', color='pink', alpha=1, label='$X_{2,r}$ ' + ref_station + ' (1961-1990)')
     axs.plot(X_1a.index, X_1a, marker='.', color='blue', alpha=1, label='$X_{1,a}$ ' + test_station + ' (segment)')
     axs.plot(X_1r_truth.index, X_1r_truth, marker='.', color='red', alpha=1, label='$X_{1,r}$ ' + test_station + ' (1961-1990) truth')
-    axs.plot(X_1r_truth.index, X_1r_estimate, marker='.', color='k', alpha=1, label='$X_{1,r}$ ' + test_station + ' (1961-1990) estimate: $\epsilon$=' + str(np.round(error,2)) + '$^{\circ}$' + temperature_unit)   
-    axs.plot(X_2a.index, len(X_2a)*[ np.nanmean( X_2a ) ], ls='--', lw=2, color='lightblue', alpha=1)            
-    axs.plot(X_2r.index, len(X_2r)*[ np.nanmean( X_2r ) ], ls='--', lw=2, color='pink', alpha=1)            
+    axs.plot(X_1r_truth.index, X_1r_estimate_CASE_1, marker='.', color='k', alpha=1, label='$X_{1,r}$ ' + test_station + ' (1961-1990) estimate: $\epsilon$=' + str(np.round(error_CASE_1,2)) + '$^{\circ}$' + temperature_unit)   
+    axs.plot(X_2a_CASE_1.index, len(X_2a_CASE_1)*[ np.nanmean( X_2a_CASE_1 ) ], ls='--', lw=2, color='lightblue', alpha=1)            
+    axs.plot(X_2r_CASE_1.index, len(X_2r_CASE_1)*[ np.nanmean( X_2r_CASE_1 ) ], ls='--', lw=2, color='pink', alpha=1)            
     axs.plot(X_1a.index, len(X_1a)*[ np.nanmean( X_1a ) ], ls='--', lw=2, color='blue', alpha=1)            
     axs.plot(X_1r_truth.index, len(X_1r_truth)*[ np.nanmean( X_1r_truth ) ], ls='--', lw=2, color='red', alpha=1)            
-    axs.plot(X_1r_truth.index, len(X_1r_estimate)*[ np.nanmean( x1r_CASE_1_normal ) ], ls='--', lw=2, color='k', alpha=1)           
+    axs.plot(X_1r_truth.index, len(X_1r_estimate_CASE_1)*[ np.nanmean( x1r_CASE_1_normal ) ], ls='--', lw=2, color='k', alpha=1)           
     axs.legend(loc='upper left', ncol=1, markerscale=1, facecolor='lightgrey', framealpha=0.5, fontsize=12)        
     axs.set_xlabel('Year', fontsize=fontsize)
     axs.set_ylabel(r'Absolute temperature, $^{\circ}$' + temperature_unit, fontsize=fontsize)
@@ -463,40 +507,31 @@ if plot_fit_model_1 == True:
     plt.savefig(figstr, dpi=300)
     plt.close('all')
                  
-if plot_fit_model_2 == True:
-
-    X_1 = df_test_station.rolling(nsmooth,center=True).mean()                                        # BHO
-    X_1a = X_1[ (X_1.index>=segment_start) & (X_1.index<=segment_end) ]                              # BHO (segment)
-    X_1r_truth = X_1[ (X_1.index>=normal_start) & (X_1.index<=normal_end) ]                          # BHO (normal) truth
-    X_1r_estimate = X_1r_truth + ( np.nanmean( x1r_CASE_2_normal ) - np.nanmean( X_1r_truth ) )      # BHO (normal) estimate
-    X_2 = df_neighbours_mean.rolling(nsmooth,center=True).mean()                                     # All neighbours mean
-    X_2a = X_2[ (X_2.index>=segment_start) & (X_2.index<=segment_end) ]                              # All neighbours mean (segment)
-    X_2r = X_2[ (X_2.index>=normal_start) & (X_2.index<=normal_end) ]                                # All neighbours mean (normal)
-    X = df.rolling(nsmooth,center=True).mean()                                                       # All neighbours
-    X_segment = X[ (X.index>=segment_start) & (X.index<=segment_end) ]                               # All neighbours (segment)
-    X_normal = X[ (X.index>=normal_start) & (X.index<=normal_end) ]                                  # All neighbours (normal)
-    error = X_1r_estimate[0] -  X_1r_truth[0]
+if plot_fit_model_2 == True: # one all neighbours plot
     
     print('plotting MODEL 2 (all neighbours) Xr vs Xa ...')
+        
+    X = df.rolling(nsmooth,center=True).mean()                                                          # All neighbours
+    X_segment = X[ (X.index>=segment_start) & (X.index<=segment_end) ]                                  # All neighbours (segment)
+    X_normal = X[ (X.index>=normal_start) & (X.index<=normal_end) ]                                     # All neighbours (normal)
         
     figstr = 'model-2-fit' + '-' + test_station + '-' + 'all-neighbours' + '.png'
     titlestr = 'Model fit: $X_{r}$ vs $X_{a}$ (ref = all neighbours) for test station = ' + test_station.title()
         
     fig, axs = plt.subplots(figsize=(15,10))
-#   axs.plot(df[ref_station].index, df[ref_station].rolling(nsmooth,center=True).mean().ewm(span=nsmooth, adjust=True).mean(), marker='.', color='lightgrey', alpha=1.0, label='$T_{g}$ ' + ref_station)
     axs.plot(X_segment.index, X_segment, marker='.', color='lightblue', alpha=1)
     axs.plot(X_normal.index, X_normal, marker='.', color='pink', alpha=1)
     axs.plot(X_1.index, X_1, marker='.', color='lightgrey', alpha=1, label='$T_{g}$ ' + test_station)
-    axs.plot(X_2a.index, X_2a, marker='.', color='teal', alpha=1, label='$X_{2,a}$ all neighbours mean (segment)')
-    axs.plot(X_2r.index, X_2r, marker='.', color='purple', alpha=1, label='$X_{2,r}$ all neighbours mean (1961-1990)')
+    axs.plot(X_2a_CASE_2.index, X_2a_CASE_2, marker='.', color='teal', alpha=1, label='$X_{2,a}$ all neighbours mean (segment)')
+    axs.plot(X_2r_CASE_2.index, X_2r_CASE_2, marker='.', color='purple', alpha=1, label='$X_{2,r}$ all neighbours mean (1961-1990)')
     axs.plot(X_1a.index, X_1a, marker='.', color='blue', alpha=1, label='$X_{1,a}$ ' + test_station + ' (segment)')
     axs.plot(X_1r_truth.index, X_1r_truth, marker='.', color='red', alpha=1, label='$X_{1,r}$ ' + test_station + ' (1961-1990) truth')    
-    axs.plot(X_1r_truth.index, X_1r_estimate, marker='.', color='k', alpha=1, label='$X_{1,r}$ ' + test_station + ' (1961-1990) estimate: $\epsilon$=' + str(np.round(error,2)) + '$^{\circ}$' + temperature_unit)    
-    axs.plot(X_2a.index, len(X_2a)*[ np.nanmean( X_2a ) ], ls='--', lw=2, color='teal', alpha=1)            
-    axs.plot(X_2r.index, len(X_2r)*[ np.nanmean( X_2r ) ], ls='--', lw=2, color='purple', alpha=1)            
+    axs.plot(X_1r_truth.index, X_1r_estimate_CASE_2, marker='.', color='k', alpha=1, label='$X_{1,r}$ ' + test_station + ' (1961-1990) estimate: $\epsilon$=' + str(np.round(error_CASE_2,2)) + '$^{\circ}$' + temperature_unit)    
+    axs.plot(X_2a_CASE_2.index, len(X_2a_CASE_2)*[ np.nanmean( X_2a_CASE_2 ) ], ls='--', lw=2, color='teal', alpha=1)            
+    axs.plot(X_2r_CASE_2.index, len(X_2r_CASE_2)*[ np.nanmean( X_2r_CASE_2 ) ], ls='--', lw=2, color='purple', alpha=1)            
     axs.plot(X_1a.index, len(X_1a)*[ np.nanmean( X_1a ) ], ls='--', lw=2, color='blue', alpha=1)            
     axs.plot(X_1r_truth.index, len(X_1r_truth)*[ np.nanmean( X_1r_truth ) ], ls='--', lw=2, color='red', alpha=1)            
-    axs.plot(X_1r_truth.index, len(X_1r_estimate)*[ np.nanmean( x1r_CASE_2_normal ) ], ls='--', lw=2, color='k', alpha=1)           
+    axs.plot(X_1r_truth.index, len(X_1r_estimate_CASE_2)*[ np.nanmean( x1r_CASE_2_normal ) ], ls='--', lw=2, color='k', alpha=1)           
     axs.legend(loc='upper left', ncol=1, markerscale=1, facecolor='lightgrey', framealpha=0.5, fontsize=12)        
     axs.set_xlabel('Year', fontsize=fontsize)
     axs.set_ylabel(r'Absolute temperature, $^{\circ}$' + temperature_unit, fontsize=fontsize)
@@ -513,4 +548,5 @@ if plot_fit_model_2 == True:
 #------------------------------------------------------------------------------
 print('** END')
 
+# axs.plot(df.index, df.rolling(nsmooth,center=True).mean().ewm(span=nsmooth, adjust=True).mean(), marker='.', color='lightgrey', alpha=1.0, label=label)
 
