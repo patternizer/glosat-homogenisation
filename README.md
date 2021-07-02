@@ -1,5 +1,5 @@
-![image](https://github.com/patternizer/glosat-best-fit-means/blob/master/model-1-fit-blue_hill-blue_hill.png)
-![image](https://github.com/patternizer/glosat-best-fit-means/blob/master/models-monthly-normals-sterr-CASE-1A-1B-2A-blue_hill-blue_hill.png)
+![image](https://github.com/patternizer/glosat-best-fit-means/blob/main/model-1-fit-blue_hill-blue_hill.png)
+![image](https://github.com/patternizer/glosat-best-fit-means/blob/main/models-monthly-normals-sterr-CASE-1A-1B-2A-blue_hill-blue_hill.png)
 
 # glosat-best-fit-means
 
