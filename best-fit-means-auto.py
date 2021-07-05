@@ -64,6 +64,9 @@ from statsmodels.tsa.stattools import adfuller
 import statsmodels.api as sm
 from statsmodels.nonparametric.smoothers_lowess import lowess
 
+# Maths libraries:
+from math import radians, cos, sin, asin, sqrt
+
 # Datetime libraries
 import cftime
 import calendar 
@@ -110,7 +113,8 @@ segment_end = pd.to_datetime('1899-12-01')
 normal_start = pd.to_datetime('1961-01-01')
 normal_end = pd.to_datetime('1990-12-01')
 
-test_station = 'blue_hill'
+test_station = '744920' # BHO
+test_radius = 200 # km
 
 #------------------------------------------------------------------------------
 # METHODS: 
@@ -123,6 +127,26 @@ def fahrenheit_to_centigrade(x):
 def centigrade_to_fahrenheit(x):
     y = (x * (9.0/5.0)) + 32.0
     return y
+
+def haversine(lat1, lon1, lat2, lon2):
+
+    # CONVERT: decimal degrees to radians 
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+
+    # CALCULATE: Haversine
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a)) 
+
+    # Radius of earth is 6371 km
+    km = 6371* c
+    return km
+
+def find_nearest_lasso(lat, lon, df, radius):
+    distances = df.apply(lambda row: haversine(lat, lon, row['lat'], row['lon']), axis=1)
+    lasso = distances < radius
+    return df.loc[lasso,:]
     
 def calculate_normals_and_SEs(a1,a2,r2):
     
@@ -177,16 +201,29 @@ if load_glosat == True:
                 
     df_temp = pd.read_pickle('DATA/df_temp.pkl', compression='bz2') # dataframe of GloSAT absolute temperatures in degrees C
     
-    stationcode_list = ['720218', '720219', '744920', '725092', '753011', '720222', '720223', '725045', '756213', '725070', '725091', '725090', '720225', '744900', '744902']
-    stationname_list = ['amherst', 'bedford', 'blue_hill', 'boston_city_wso', 'kingston', 'lawrence', 'new_bedford', 'new_haven', 'plymouth_kingston', 'providence_wso', 'provincetown', 'reading', 'taunton', 'walpole_2', 'west_medway']
-    stationcode_dict = dict(zip(range(len(stationcode_list)), stationcode_list))
-    stationname_dict = dict(zip(range(len(stationcode_list)), stationname_list))
+    # EXTRACT: stations with distance test_radius of test_station
+    
+    test_station_lat = df_temp[df_temp['stationcode']==test_station]['stationlat'].iloc[0]
+    test_station_lon = df_temp[df_temp['stationcode']==test_station]['stationlon'].iloc[0]    
+    station_codes = df_temp['stationcode'].unique()
+    station_lats = df_temp.groupby('stationcode')['stationlat'].mean()
+    station_lons = df_temp.groupby('stationcode')['stationlon'].mean()
+    da = pd.DataFrame({'lat':station_lats, 'lon':station_lons})    
+    lasso = find_nearest_lasso( test_station_lat, test_station_lon, da, test_radius)
+    distances = [ haversine(test_station_lat, test_station_lon, lasso['lat'].iloc[i], lasso['lon'].iloc[i]) for i in range(len(lasso)) ]
+    lasso['distance'] = distances
+    
+#    stationcode_list = ['720218', '720219', '744920', '725092', '753011', '720222', '720223', '725045', '756213', '725070', '725091', '725090', '720225', '744900', '744902']
+#    stationname_list = ['amherst', 'bedford', 'blue_hill', 'boston_city_wso', 'kingston', 'lawrence', 'new_bedford', 'new_haven', 'plymouth_kingston', 'providence_wso', 'provincetown', 'reading', 'taunton', 'walpole_2', 'west_medway']
+
+    stationcode_list_lasso = lasso.index.to_list()
+    stationname_list_lasso = [ df_temp[df_temp['stationcode']==stationcode_list_lasso[i]]['stationname'].iloc[0] for i in range(len(stationcode_list_lasso)) ]        
 
     dates = pd.date_range(start='1700-01-01', end='2021-12-01', freq='MS')
     df = pd.DataFrame(index=dates)
-    for i in range(len(stationcode_list)):        
+    for i in range(len(stationcode_list_lasso)):        
         
-        dt = df_temp[df_temp['stationcode']==stationcode_list[i]]
+        dt = df_temp[df_temp['stationcode']==stationcode_list_lasso[i]]
         ts = np.array(dt.groupby('year').mean().iloc[:,0:12]).ravel()        
         
         if use_fahrenheit == True: 
@@ -194,7 +231,57 @@ if load_glosat == True:
             ts = centigrade_to_fahrenheit(ts)        
             
         t = pd.date_range(start=str(dt.year.iloc[0]), periods=len(ts), freq='MS')
-        df[stationname_list[i]] = pd.DataFrame({stationname_list[i]:ts}, index=t) 
+        df[stationcode_list_lasso[i]] = pd.DataFrame({stationname_list_lasso[i]:ts}, index=t) 
+        
+    df_segment = df[ (df.index>=segment_start) & (df.index<=segment_end) ]
+    df_normal = df[ (df.index>=normal_start) & (df.index<=normal_end) ]
+    df_test_station = df[test_station]
+    df_test_station_segment = df_segment[test_station]
+    df_test_station_normal = df_normal[test_station]
+                    
+    # FILTER: exclude stations with <= 15 years for all monthly normals in 1961-1990 or <= 5 year ref vs test station overlaps for all months in segment
+    
+    stationcode_list = []
+    for station in range(len(stationcode_list_lasso)):
+        
+        ref_station = stationcode_list_lasso[station]
+        df_ref_station = df[ref_station]
+        df_ref_station_segment = df_segment[ref_station]
+        df_ref_station_normal = df_normal[ref_station]
+        
+        a1 = df_test_station_segment
+        a2 = df_ref_station_segment
+        r2 = df_ref_station_normal
+    
+        # COUNT: number of years available to calculate monthly normal
+    
+        a12_n = []
+        r2_n = []
+        for i in range(12):
+            
+            n_a = np.isfinite( a1[a1.index.month==(i+1)] + a2[a2.index.month==(i+1)] ).sum()
+            n_r = np.isfinite( r2[r2.index.month==(i+1)] ).sum()
+            a12_n.append(n_a)
+            r2_n.append(n_r)
+    
+        # KEEP: ( stations with > 15 years for all monthly normals in 1961-1990 ) & ( ref vs test station overlaps > 5 years for all months in segment ) 
+    
+        if ( (np.array(r2_n) > 15).sum() == 12 ) & ( (np.array(a12_n) > 5).sum() == 12 ):
+    
+            stationcode_list.append( stationcode_list_lasso[station] )    
+
+    stationname_list = [ df_temp[df_temp['stationcode']==stationcode_list[i]]['stationname'].iloc[0] for i in range(len(stationcode_list)) ]                
+    stationcode_dict = dict(zip(range(len(stationcode_list)), stationcode_list))
+    stationname_dict = dict(zip(range(len(stationcode_list)), stationname_list))
+
+    stationcode_list_excluded = list(set(stationcode_list_lasso)-set(stationcode_list))
+    stationname_list_excluded = [ df_temp[df_temp['stationcode']==stationcode_list_excluded[i]]['stationname'].iloc[0] for i in range(len(stationcode_list_excluded)) ]                
+
+    print('EXCLUDED = ', stationcode_list_excluded, stationname_list_excluded)
+
+    # DROP: filtered stations from dataframe
+
+    df.drop(columns=stationcode_list_excluded)
 
 #------------------------------------------------------------------------------
 # CALCULATE: test station and neighbouring station mean timeseries in the segment and normal
@@ -213,6 +300,15 @@ df_neighbours_mean_segment = df_neighbours_segment.mean(axis=1)
 df_neighbours_mean_normal = df_neighbours_normal.mean(axis=1)
 
 #------------------------------------------------------------------------------
+# MODEL 2B: multple co-located 'core' neighbours x1=mean of 'core' neighbours, x2=BHO
+#------------------------------------------------------------------------------
+
+# Step 1: lasso incorpoated + conditions on number of years for overlaps and normals
+# Step 2: added distance from BHO for each neighbour
+# Step 3: procedural idea is to add ensemble station members incrementally provided they do not increase SE_{1-2,a} ? #
+# NB: mean of core stations constitutes a new member not necessarily in ensemble ?
+
+#------------------------------------------------------------------------------
 # LOOP: over ref_stations and estimate normal
 #------------------------------------------------------------------------------
 
@@ -229,7 +325,8 @@ df_errors['test_station'] = len(stationcode_list)*[test_station]
 
 for station in range(len(stationcode_list)):
     
-    ref_station = stationname_list[station]
+#   ref_station = stationname_list[station]
+    ref_station = stationcode_list[station]
     df_ref_station = df[ref_station]
     df_ref_station_segment = df_segment[ref_station]
     df_ref_station_normal = df_normal[ref_station]
@@ -276,7 +373,7 @@ for station in range(len(stationcode_list)):
     else:
         x1r_CASE_1_normal = x1r_CASE_1A_normal
         x1r_CASE_2_normal = x1r_CASE_2A_normal    
-    
+                  
     #------------------------------------------------------------------------------
     # STATISTICS: model versus truth monthly mean errors
     #------------------------------------------------------------------------------
@@ -384,7 +481,7 @@ for station in range(len(stationcode_list)):
         axs.set_title(titlestr, fontsize=fontsize)
         axs.tick_params(labelsize=fontsize)   
         if use_fahrenheit == True:
-            axs.set_ylim(42,54)
+            axs.set_ylim(40,54)
         else:
             ax.set_ylim(-20,40)
         fig.tight_layout()
@@ -428,7 +525,7 @@ if plot_fit_model_2 == True: # one all neighbours plot
     axs.set_title(titlestr, fontsize=fontsize)
     axs.tick_params(labelsize=fontsize)   
     if use_fahrenheit == True:
-        axs.set_ylim(42,54)
+        axs.set_ylim(40,54)
     else:
         ax.set_ylim(-20,40)
     fig.tight_layout()
@@ -439,4 +536,30 @@ if plot_fit_model_2 == True: # one all neighbours plot
 print('** END')
 
 # axs.plot(df.index, df.rolling(nsmooth,center=True).mean().ewm(span=nsmooth, adjust=True).mean(), marker='.', color='lightgrey', alpha=1.0, label=label)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
