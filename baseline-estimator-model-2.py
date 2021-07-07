@@ -255,20 +255,8 @@ if load_glosat == True:
 
     print('Excluded stations = ', stationcode_list_excluded, stationname_list_excluded)
 
-    # PLOT: distance histogram
-
-    titlestr = 'Reference station distance histogram: bin width = 20 km'
-    figstr = 'ref-station-distance-histogram.png'
-    
-    fig,axs = plt.subplots(figsize=(15,10))
-    sns.histplot(lasso_filtered['distance'], stat="probability", binwidth=20, log_scale=False, element="step", fill=True, kde=True)    
-    axs.set_xlabel('Distance, km', fontsize=fontsize)
-    axs.set_ylabel('Probability', fontsize=fontsize)
-    axs.set_title(titlestr, fontsize=fontsize)
-    axs.tick_params(labelsize=fontsize)    
-    fig.tight_layout()
-    plt.savefig(figstr, dpi=300)
-    plt.close('all')    
+    df_excluded_stations = pd.DataFrame({'stationcode_list_excluded':stationcode_list_excluded, 'stationname_list_excluded':stationname_list_excluded})
+    df_excluded_stations.to_csv('MODEL-2A-excluded-stations' + '-' + test_station + '(bho)' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.csv')
                 
 #------------------------------------------------------------------------------
 # RECALCULATE: test station and neighbouring station mean timeseries in the segment and normal
@@ -344,7 +332,7 @@ error = X_1r_estimate[0] -  X_1r_truth[0]                                       
 df_errors['error_x1r'].iloc[0] = error_x1r
 df_errors['error_SE1r'].iloc[0] = error_SE1r
 df_errors['error_SE12'].iloc[0] = error_SE12
-df_errors.to_csv('MODEL-2A-errors.csv')
+df_errors.to_csv('MODEL-2A-errors' + '-' + test_station + '(bho)' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.csv')
 
 #==============================================================================
             
@@ -352,7 +340,7 @@ df_errors.to_csv('MODEL-2A-errors.csv')
         
 print('plotting X_{1,r} and SE_{1,r} ...')
             
-figstr = 'MODEL-2A-monthly-x1r-SE1r' + '-' + test_station + '(bho)' + '-' + str(test_radius) + 'km' + '.png'
+figstr = 'MODEL-2A-monthly-x1r-SE1r' + '-' + test_station + '(bho)' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.png'
 titlestr = r'Model 1B Monthly $\bar{X}_{1,r}$ and $SE_{1,r}$: ' + str(df_neighbours.shape[1]) + ' neighbours < ' + str(test_radius) + ' km of the test station = ' + test_station + ' (Blue Hill): n(overlap) = ' +str(n_overlap_years) + ' years'
         
 fig, axs = plt.subplots(2,1, figsize=(15,10))
@@ -391,7 +379,7 @@ X = df_neighbours.rolling(nsmooth,center=True).mean()                           
 X_segment = X[ (X.index>=segment_start) & (X.index<=segment_end) ]                                  # All neighbours (segment)
 X_normal = X[ (X.index>=normal_start) & (X.index<=normal_end) ]                                     # All neighbours (normal)
         
-figstr = 'MODEL-2A-fit' + '-' + test_station + '-' + str(test_radius) + 'km' + '.png'
+figstr = 'MODEL-2A-fit' + '-' + test_station + '(bho)' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.png'
 titlestr = r'Model fit: $X_{1,r}$: ' + str(df_neighbours.shape[1]) + ' neighbours < ' + str(test_radius) + ' km of the test station = ' + test_station.title() + ' (Blue Hill): n(overlap) = ' +str(n_overlap_years) + ' years'
         
 fig, axs = plt.subplots(figsize=(15,10))
@@ -420,6 +408,21 @@ else:
 fig.tight_layout()
 plt.savefig(figstr, dpi=300)
 plt.close('all')            
+
+# PLOT: Reference station distance probability histogram
+
+figstr = 'MODEL-2A-distance-histogram' + '-' + test_station + '(bho)' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.png'
+titlestr = r'Model 2 distance histogram (bin width = 20 km): ' + str(df_neighbours.shape[1]) + ' neighbours < ' + str(test_radius) + ' km of the test station = ' + test_station + ' (Blue Hill): n(overlap) = ' +str(n_overlap_years) + ' years'
+    
+fig,axs = plt.subplots(figsize=(15,10))
+sns.histplot(lasso_filtered['distance'], stat="probability", binwidth=20, log_scale=False, element="step", fill=True, kde=True)    
+axs.set_xlabel('Distance, km', fontsize=fontsize)
+axs.set_ylabel('Probability', fontsize=fontsize)
+axs.set_title(titlestr, fontsize=fontsize)
+axs.tick_params(labelsize=fontsize)    
+fig.tight_layout()
+plt.savefig(figstr, dpi=300)
+plt.close('all')    
     
 #------------------------------------------------------------------------------
 print('** END')
