@@ -1,14 +1,16 @@
-![image](https://github.com/patternizer/glosat-best-fit-means/blob/main/model-1-fit-blue_hill-blue_hill.png)
-![image](https://github.com/patternizer/glosat-best-fit-means/blob/main/models-monthly-normals-sterr-CASE-1A-1B-2A-blue_hill-blue_hill.png)
+![image](https://github.com/patternizer/glosat-best-fit-means/blob/main/MODEL-1-monthly-x1r-SE1r-725092(boston_city_wso)-744920(bho).png)
+![image](https://github.com/patternizer/glosat-best-fit-means/blob/main/MODEL-1-fit-725092(boston_city_wso)-744920(bho).png)
 
 # glosat-best-fit-means
 
-Python codebase for construction of optimal baseline normals from neighbouring station timeseries overlaps. Part of ongoing work for the [GloSAT](https://www.glosat.org) project: www.glosat.org 
+Python codebase for baseline normal estimators built from neighbouring station timeseries predictors. Part of ongoing work for the [GloSAT](https://www.glosat.org) project: www.glosat.org 
 
 ## Contents
 
-* `best-fit-means.py` - python script to read in land surface air temperature timeseries and estimate a baseline normal for short segments based on best fit mean models using a reference station timeseries.
-* `best-fit-means-auto.py` - loop over list of neighbouring reference stations and store model errors.
+* `baseline-estimator-model-1.py` - python script for Model 1A (uncorrelated standard errors) and Model 1B (modeling out the correlation) to estimate the baseline normal from single neighbouring station timeseries within a lasso radius and with the constraint that each monthly normal has at least 15 years of values
+* `baseline-estimator-model-2.py` - python script for Model 2A using the filtered neighbouring station ensemble mean in the segment and reference baseline region
+* `baseline-estimator-model-3.py` - python script for Model 3 to solve the system of linear equations using core neighbours (in progress)
+
 
 ## Instructions for use
 
@@ -23,7 +25,8 @@ Then create a DATA/ directory and copy to it the required input dataset listed i
 
 The code is designed to run in an environment using Miniconda3-latest-Linux-x86_64.
 
-    $ python best-fit-means-auto.py
+    $ python baseline-estimator-model-1.py
+    $ python baseline-estimator-model-2.py
 
 ## License
 
