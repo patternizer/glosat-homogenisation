@@ -10,6 +10,7 @@ Python codebase for baseline normal estimators built from neighbouring station t
 * `baseline-estimator-model-1.py` - python script for Model 1A (uncorrelated standard errors) and Model 1B (modeling out the correlation) to estimate the baseline normal from single neighbouring station timeseries within a lasso radius and with the constraint that each monthly normal has at least 15 years of values
 * `baseline-estimator-model-2a.py` - python script for Model 2A using the filtered neighbouring station ensemble mean in the segment and reference baseline region
 * `baseline-estimator-model-2b.py` - python script for Model 2B optimising on the sampling error of the mean of core stations
+* `baseline-estimator-model-2c.py` - python script for Model 2C maximizing co-located neighbour overlaps and segment length
 * `baseline-estimator-model-3.py` - python script for Model 3 to solve the system of linear equations using core neighbours (in progress)
 
 
@@ -27,7 +28,9 @@ Then create a DATA/ directory and copy to it the required input dataset listed i
 The code is designed to run in an environment using Miniconda3-latest-Linux-x86_64.
 
     $ python baseline-estimator-model-1.py
-    $ python baseline-estimator-model-2.py
+    $ python baseline-estimator-model-2a.py
+    $ python baseline-estimator-model-2b.py
+    $ python baseline-estimator-model-2c.py
 
 ## License
 

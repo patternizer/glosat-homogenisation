@@ -111,10 +111,16 @@ segment_end = pd.to_datetime('1900-12-01')
 normal_start = pd.to_datetime('1961-01-01')
 normal_end = pd.to_datetime('1990-12-01')
 
-test_station = '744920'     # BHO
+#test_station = '744920'     # BHO
+#test_station = '103810'    # Berlin-Dahlem
+#test_station = '109620'    # Hohenpeissenberg
+#test_station = '024581'    # Uppsala
+test_station = '113200'     # Innsbruck
+
+
 test_radius = 312           # km
 n_baseline_years = 15       # Minimum number of years in baseline for calculation of normals 
-n_overlap_years = 10        # Minimum number of years overlap in the segment epoch
+n_overlap_years = 25        # Minimum number of years overlap in the segment epoch
 
 #------------------------------------------------------------------------------
 # METHODS: 
@@ -190,6 +196,7 @@ if load_glosat == True:
     
     test_station_lat = df_temp[df_temp['stationcode']==test_station]['stationlat'].iloc[0]
     test_station_lon = df_temp[df_temp['stationcode']==test_station]['stationlon'].iloc[0]    
+    test_station_name = df_temp[df_temp['stationcode']==test_station]['stationname'].iloc[0]    
     
     # LASSO: ref_station list (lat,lon,distance) within a distance test_radius of test_station
         
@@ -256,7 +263,7 @@ if load_glosat == True:
     print('Excluded stations = ', stationcode_list_excluded, stationname_list_excluded)
 
     df_excluded_stations = pd.DataFrame({'stationcode_list_excluded':stationcode_list_excluded, 'stationname_list_excluded':stationname_list_excluded})
-    df_excluded_stations.to_csv('MODEL-2B-excluded-stations' + '-' + test_station + '(bho)' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.csv')
+    df_excluded_stations.to_csv('MODEL-2B-excluded-stations' + '-' + test_station + '(' + test_station_name.replace(' ','_') + ')' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.csv')
                 
 #------------------------------------------------------------------------------
 # RECALCULATE: test station and neighbouring station mean timeseries in the segment and normal
@@ -278,7 +285,7 @@ df_neighbours_mean_segment = df_neighbours_segment.mean(axis=1)
 df_neighbours_mean_normal = df_neighbours_normal.mean(axis=1)
 
 #------------------------------------------------------------------------------
-# MODEL 2B: find 'core' neighbours x1='core' neighbour, x2=BHO
+# MODEL 2B: find 'core' neighbours x1='core' neighbour, x2=test_station
 #------------------------------------------------------------------------------
 
 # Procedural idea is to add ensemble station members incrementally provided they do not increase SE_{1-2,a} ? #
@@ -294,23 +301,27 @@ stationname_list_test_neighbours = []
 stationcode_list_core_neighbours = []
 stationname_list_core_neighbours = []
 stationcode_list_SE = []
+stationcode_list_SE12 = []
 stationcode_list_nSE = []
 stationcode_list_distance = []
 
 for i in range(len(lasso_sorted)):
 
+#   test_station_i = stationcode_list_by_distance[0]
     test_station_i = stationcode_list_by_distance[i]
     df_test_station_i_segment = df_segment[test_station_i]
     
-    nSE = []
     SE = []
+    SE12a = []
+    nSE12a = []
     for j in range(len(lasso_sorted)):      
         
         if j == i:
 #            SE.append ( 12*[np.nan] )
 #            nSE.append ( np.zeros(12) )
             SE.append ( np.nan )
-            nSE.append (np.nan )
+            SE12a.append ( np.nan )
+            nSE12a.append (np.nan )
         else:
             ref_station_j = stationcode_list_by_distance[j]
             df_ref_station_j = df_filtered[ref_station_j]
@@ -322,19 +333,54 @@ for i in range(len(lasso_sorted)):
             r2 = df_ref_station_j_normal            
             x1r, SE1r, SE12, n12 = calculate_normals_and_SEs(a1,a2,r2)               
             SE.append( np.nanmean(SE1r) )
-#           SE.append( np.nanmean(SE12) )
-            nSE.append( np.nanmean(n12) )
+            SE12a.append( np.nanmean(SE12) )
+            nSE12a.append( np.nanmean(n12) )
         
     SE = np.array(SE)
-    nSE = np.array(nSE)
+    SE12 = np.array(SE12a)
+    nSE12 = np.array(nSE12a)
         
     stationcode_list_test_neighbours.append( test_station_i )        
     stationname_list_test_neighbours.append( stationname_list_by_distance[ i ] )
     stationcode_list_core_neighbours.append( stationcode_list_by_distance[ np.nanargmin(SE) ] )       
     stationname_list_core_neighbours.append( stationname_list_by_distance[ np.nanargmin(SE) ] )
     stationcode_list_SE.append( np.nanmean(SE) )
-    stationcode_list_nSE.append( np.nanmean(nSE) )
+    stationcode_list_SE12.append( np.nanmean(SE12) )
+    stationcode_list_nSE.append( np.nanmean(nSE12) )
     stationcode_list_distance.append( lasso_sorted['distance'][i] )
+
+    if i == 0:
+
+        # EXTRACT: core neighbour pair test with 5-95% percentile SE_{1-2,r}
+
+        SE_pctl_05 = np.nanpercentile(SE,5)
+        SE_pctl_95 = np.nanpercentile(SE,95)
+        SE12_pctl_05 = np.nanpercentile(SE12,5)
+        SE12_pctl_95 = np.nanpercentile(SE12,95)
+        
+        print('plotting SE_{1-2,r} and SE_{1,r} as a function of station distance from test_station ...')
+                        
+        figstr = 'MODEL-2B-SE-vs-distance' + '-' + test_station + '(' + test_station_name.replace(' ','_') + ')' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.png'
+        titlestr = r'Model 2B $SE_{1-2,a}$ and $SE_{1,r}$: ' + str(df_neighbours.shape[1]) + ' neighbours < ' + str(test_radius) + ' km of the test station = ' + test_station.title() + ' (' + test_station_name.replace('_',' ').title() + '): n(overlap) = ' +str(n_overlap_years) + ' years'
+                
+        fig, axs = plt.subplots(figsize=(15,10))
+        plt.plot(  lasso_sorted['distance'].values, SE, marker='s', color='black', markersize=15, fillstyle='none', linestyle='none', label=r'$SE_{1,r}$')
+        plt.plot(  lasso_sorted['distance'].values, SE12, marker='o', color='red', markersize=15, fillstyle='none', linestyle='none', label=r'$SE_{1-2,a}$')
+        plt.axhline(y=SE_pctl_05, linestyle='--', color='black', label=r'$SE_{1,r}$: 5% level = ' + str(np.round(SE_pctl_05,2)))
+        plt.axhline(y=SE_pctl_95, linestyle='--', color='black', label=r'$SE_{1,r}$: 95% level = ' + str(np.round(SE_pctl_95,2)))
+        plt.axhline(y=SE12_pctl_05, linestyle='--', color='red', label=r'$SE_{1-2,a}$: 5% level = ' + str(np.round(SE12_pctl_05,2)))
+        plt.axhline(y=SE12_pctl_95, linestyle='--', color='red', label=r'$SE_{1-2,a}$: 95% level = ' + str(np.round(SE12_pctl_95,2)))
+        plt.fill_between( lasso_sorted['distance'].values, SE_pctl_05, SE_pctl_95, color='black', alpha=0.1)
+        plt.fill_between( lasso_sorted['distance'].values, SE12_pctl_05, SE12_pctl_95, color='red', alpha=0.1)
+        axs.legend(loc='upper left', ncol=1, markerscale=1, facecolor='lightgrey', framealpha=0.5, fontsize=12)        
+        axs.set_xlabel('Core station distance from test station, km', fontsize=fontsize)
+        axs.set_ylabel('$SE$', fontsize=fontsize)
+        axs.set_title(titlestr, fontsize=fontsize)
+        axs.tick_params(labelsize=fontsize)   
+        axs.set_ylim(0,1)
+        fig.tight_layout()
+        plt.savefig(figstr, dpi=300)
+        plt.close('all')      
 
 df_combinations = pd.DataFrame({
     'stationcode_list_test_neighbours':stationcode_list_test_neighbours,
@@ -342,6 +388,7 @@ df_combinations = pd.DataFrame({
     'stationcode_list_core_neighbours':stationcode_list_core_neighbours,
     'stationname_list_core_neighbours':stationname_list_core_neighbours,
     'stationcode_list_SE':stationcode_list_SE,    
+    'stationcode_list_SE12':stationcode_list_SE12,    
     'stationcode_list_nSE':stationcode_list_nSE,
     'stationcode_list_distance':stationcode_list_distance
     })
@@ -379,32 +426,6 @@ for i in range(len(df_combinations)):
         
 df_core_neighbours_i = df_core_neighbours_i.loc[:,~df_core_neighbours_i.columns.duplicated()]
 del df_core_neighbours_i[test_station]            
-
-# EXTRACT: core neighbour pair test with 5-95% percentile SE_{1-2,r}
-
-SE_pctl_05 = np.nanpercentile(SE,5)
-SE_pctl_95 = np.nanpercentile(SE,95)
-
-print('plotting SE_{1-2,r} as a function of station separation  ...')
-                
-figstr = 'MODEL-2B-SE1-2-vs-distance' + '-' + test_station + '(bho)' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.png'
-titlestr = r'Model 2B $SE_{1-2,a}$: ' + str(df_neighbours.shape[1]) + ' neighbours < ' + str(test_radius) + ' km of the test station = ' + test_station.title() + ' (Blue Hill): n(overlap) = ' +str(n_overlap_years) + ' years'
-        
-fig, axs = plt.subplots(figsize=(15,10))
-plt.plot(  df_combinations.stationcode_list_distance.values, df_combinations.stationcode_list_SE.values, marker='s', markersize=15, fillstyle='none', linestyle='none', label=r'$SE_{1-2,a}$')
-plt.axhline(y=SE_pctl_05, linestyle='--', color='black', label=r'$SE_{1-2,a}$: 5% level = ' + str(np.round(SE_pctl_05,2)))
-plt.axhline(y=SE_pctl_95, linestyle='--', color='black', label=r'$SE_{1-2,a}$: 95% level = ' + str(np.round(SE_pctl_95,2)))
-plt.fill_between( df_combinations.stationcode_list_distance.values, SE_pctl_05, SE_pctl_95, color='black', alpha=0.1)
-axs.legend(loc='upper left', ncol=1, markerscale=1, facecolor='lightgrey', framealpha=0.5, fontsize=12)        
-axs.set_xlabel('Core station distance from BHO, km', fontsize=fontsize)
-axs.set_ylabel('$SE_{1-2,a}$', fontsize=fontsize)
-axs.set_title(titlestr, fontsize=fontsize)
-axs.tick_params(labelsize=fontsize)   
-#axs.set_xticks(np.arange(len(df_combinations)))
-#axs.set_ylim(0,1)
-fig.tight_layout()
-plt.savefig(figstr, dpi=300)
-plt.close('all')            
 
 #------------------------------------------------------------------------------
 # CALCULATE: Model 2B predictor using ref_stations filtered ensemble and test_station segment
@@ -451,11 +472,16 @@ for i in range(12):
     
 a1 = df_test_station_segment
 a2 = df_core_neighbours_mean_segment
-r2 = df_core_neighbours_mean_normal
-    
+r2 = df_core_neighbours_mean_normal    
+
 x1r, SE1r, SE12, n12 = calculate_normals_and_SEs(a1,a2,r2)
 x1r_normal = pd.Series(np.tile(x1r, reps=30), index=r2.index)
     
+#plt.plot(a1.rolling(60).mean()); plt.axhline(y=np.nanmean(a1))
+#plt.plot(a2.rolling(60).mean()); plt.axhline(y=np.nanmean(a2))
+#plt.plot(r2.rolling(60).mean()); plt.axhline(y=np.nanmean(r2))
+#plt.plot(x1r_normal.rolling(60).mean()); plt.axhline(y=np.nanmean(x1r_normal))
+
 #------------------------------------------------------------------------------
 # STATISTICS: model versus truth monthly mean errors
 #------------------------------------------------------------------------------
@@ -467,7 +493,7 @@ error_SE12 = np.nanmean( np.array(SE12) )
 X_1 = df_test_station.rolling(nsmooth,center=True).mean()                                           # BHO
 X_1a = X_1[ (X_1.index>=segment_start) & (X_1.index<=segment_end) ]                                 # BHO (segment)
 X_1r_truth = X_1[ (X_1.index>=normal_start) & (X_1.index<=normal_end) ]                             # BHO (normal) truth
-X_1r_estimate = X_1r_truth + ( np.nanmean( x1r_normal ) - np.nanmean( X_1r_truth ) )                # BHO (normal) estimate (CASE_1B)
+X_1r_estimate = X_1r_truth + ( np.nanmean( x1r_normal ) - np.nanmean( X_1r_truth ) )                # BHO (normal) estimate (CASE_2B)
 X_2 = df_core_neighbours_mean.rolling(nsmooth,center=True).mean()                                   # Core neighbours mean
 X_2a = X_2[ (X_2.index>=segment_start) & (X_2.index<=segment_end) ]                                 # Core neighbours mean (segment)
 X_2r = X_2[ (X_2.index>=normal_start) & (X_2.index<=normal_end) ]                                   # Core neighbours mean (normal)
@@ -478,7 +504,7 @@ error = X_1r_estimate[0] -  X_1r_truth[0]                                       
 df_errors['error_x1r'].iloc[0] = error_x1r
 df_errors['error_SE1r'].iloc[0] = error_SE1r
 df_errors['error_SE12'].iloc[0] = error_SE12
-df_errors.to_csv('MODEL-2B-errors' + '-' + test_station + '(bho)' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.csv')
+df_errors.to_csv('MODEL-2B-errors' + '-' + test_station + '(' + test_station_name.replace(' ','_') + ')' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.csv')
 
 #==============================================================================
             
@@ -486,8 +512,8 @@ df_errors.to_csv('MODEL-2B-errors' + '-' + test_station + '(bho)' + '-' + str(te
         
 print('plotting X_{1,r} and SE_{1,r} ...')
             
-figstr = 'MODEL-2B-monthly-x1r-SE1r' + '-' + test_station + '(bho)' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.png'
-titlestr = r'Model 2B monthly $\bar{X}_{1,r}$ and $SE_{1,r}$: ' + str(df_core_neighbours.shape[1]) + ' neighbours < ' + str(test_radius) + ' km of the test station = ' + test_station + ' (Blue Hill): n(overlap) = ' +str(n_overlap_years) + ' years'
+figstr = 'MODEL-2B-monthly-x1r-SE1r' + '-' + test_station + '(' + test_station_name.replace(' ','_') + ')' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.png'
+titlestr = r'Model 2B monthly $\bar{X}_{1,r}$ and $SE_{1,r}$: ' + str(df_core_neighbours.shape[1]) + ' core neighbours < ' + str(test_radius) + ' km of the test station = ' + test_station + ' (' + test_station_name.replace('_',' ').title() + '): n(overlap) = ' +str(n_overlap_years) + ' years'
         
 fig, axs = plt.subplots(2,1, figsize=(15,10))
 axs[0].plot(x1r_truth, marker='s', markersize=20, fillstyle='none', linestyle='none', label=r'Truth: $\bar{X}_{1,r}$')
@@ -525,8 +551,8 @@ X = df_core_neighbours.rolling(nsmooth,center=True).mean()                      
 X_segment = X[ (X.index>=segment_start) & (X.index<=segment_end) ]                                  # All neighbours (segment)
 X_normal = X[ (X.index>=normal_start) & (X.index<=normal_end) ]                                     # All neighbours (normal)
         
-figstr = 'MODEL-2B-fit' + '-' + test_station + '(bho)' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.png'
-titlestr = r'Model 2B fit: $X_{1,r}$: ' + str(df_core_neighbours.shape[1]) + ' neighbours < ' + str(test_radius) + ' km of the test station = ' + test_station.title() + ' (Blue Hill): n(overlap) = ' +str(n_overlap_years) + ' years'
+figstr = 'MODEL-2B-fit' + '-' + test_station + '(' + test_station_name.replace(' ','_') + ')' + '-' + str(test_radius) + 'km' + '-' + str(n_overlap_years) + ' years' + '.png'
+titlestr = r'Model 2B fit: $X_{1,r}$: ' + str(df_core_neighbours.shape[1]) + ' core neighbours < ' + str(test_radius) + ' km of the test station = ' + test_station.title() + ' (' + test_station_name.replace('_',' ').title() + '): n(overlap) = ' +str(n_overlap_years) + ' years'
         
 fig, axs = plt.subplots(figsize=(15,10))
 axs.plot(X_segment.index, X_segment, marker='.', color='lightblue', alpha=1)
@@ -536,12 +562,12 @@ axs.plot(X_2a.index, X_2a, marker='.', color='teal', alpha=1, label='$X_{2,a}$ c
 axs.plot(X_2r.index, X_2r, marker='.', color='purple', alpha=1, label='$X_{2,r}$ core neighbours mean (1961-1990)')
 axs.plot(X_1a.index, X_1a, marker='.', color='blue', alpha=1, label='$X_{1,a}$ ' + test_station + ' (segment)')
 axs.plot(X_1r_truth.index, X_1r_truth, marker='.', color='red', alpha=1, label='$X_{1,r}$ ' + test_station + ' (1961-1990) truth')    
-axs.plot(X_1r_truth.index, X_1r_estimate, marker='.', color='k', alpha=1, label='$X_{1,r}$ ' + test_station + ' (1961-1990) estimate: $\epsilon$=' + str(np.round(error,2)) + '$^{\circ}$' + temperature_unit)    
+axs.plot(X_1r_estimate.index, X_1r_estimate, marker='.', color='k', alpha=1, label='$X_{1,r}$ ' + test_station + ' (1961-1990) estimate: $\epsilon$=' + str(np.round(error,2)) + '$^{\circ}$' + temperature_unit)    
 axs.plot(X_2a.index, len(X_2a)*[ np.nanmean( X_2a ) ], ls='--', lw=2, color='teal', alpha=1)            
 axs.plot(X_2r.index, len(X_2r)*[ np.nanmean( X_2r ) ], ls='--', lw=2, color='purple', alpha=1)            
 axs.plot(X_1a.index, len(X_1a)*[ np.nanmean( X_1a ) ], ls='--', lw=2, color='blue', alpha=1)            
 axs.plot(X_1r_truth.index, len(X_1r_truth)*[ np.nanmean( X_1r_truth ) ], ls='--', lw=2, color='red', alpha=1)            
-axs.plot(X_1r_truth.index, len(X_1r_estimate)*[ np.nanmean( x1r_normal ) ], ls='--', lw=2, color='k', alpha=1)           
+axs.plot(x1r_normal.index, len(x1r_normal)*[ np.nanmean( x1r_normal ) ], ls='--', lw=2, color='k', alpha=1)           
 axs.legend(loc='upper left', ncol=1, markerscale=1, facecolor='lightgrey', framealpha=0.5, fontsize=12)        
 axs.set_xlabel('Year', fontsize=fontsize)
 axs.set_ylabel(r'Average absolute temperature (5yr MA), $^{\circ}$' + temperature_unit, fontsize=fontsize)
