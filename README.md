@@ -1,9 +1,9 @@
-![image](https://github.com/patternizer/glosat-best-fit-means/blob/main/MODEL-1-monthly-x1r-SE1r-725092(boston_city_wso)-744920(bho).png)
-![image](https://github.com/patternizer/glosat-best-fit-means/blob/main/MODEL-1-fit-725092(boston_city_wso)-744920(bho).png)
+![image](https://github.com/patternizer/glosat-homogenisation/blob/main/MODEL-1-monthly-x1r-SE1r-725092(boston_city_wso)-744920(bho).png)
+![image](https://github.com/patternizer/glosat-homogenisation/blob/main/MODEL-1-fit-725092(boston_city_wso)-744920(bho).png)
 
-# glosat-best-fit-means
+# glosat-homogenisation
 
-Python codebase for baseline normal estimators built from neighbouring station timeseries predictors. Part of ongoing work for the [GloSAT](https://www.glosat.org) project: www.glosat.org 
+Python codebase for development of homogenisation algorithms for land air surface temperature station data. Part of ongoing work for the [GloSAT](https://www.glosat.org) project: www.glosat.org 
 
 ## Contents
 
@@ -16,10 +16,10 @@ Python codebase for baseline normal estimators built from neighbouring station t
 
 ## Instructions for use
 
-The first step is to clone the latest glosat-best-fit-means code and step into the installed Github directory: 
+The first step is to clone the latest glosat-homogenisation code and step into the installed Github directory: 
 
-    $ git clone https://github.com/patternizer/glosat-best-fit-means.git
-    $ cd glosat-best-fit-means
+    $ git clone https://github.com/patternizer/glosat-homogenisation.git
+    $ cd glosat-homogenisation
 
 Then create a DATA/ directory and copy to it the required input dataset listed in python glosat-best-fit-means-auto.
 
