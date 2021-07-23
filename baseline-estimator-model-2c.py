@@ -110,12 +110,12 @@ segment_end = pd.to_datetime('1920-12-01')
 normal_start = pd.to_datetime('1961-01-01')
 normal_end = pd.to_datetime('1990-12-01')
 
-#test_station = '744920'    # BHO
+test_station = '744920'    # BHO
 #test_station = '103810'    # Berlin-Dahlem
 #test_station = '109620'    # Hohenpeissenberg
 #test_station = '024581'    # Uppsala
 #test_station = '113200'    # Innsbruck
-test_station = '037401'    # CET
+#test_station = '037401'    # CET
 
 test_radius = 312           # km
 n_baseline_years = 15       # Minimum number of years in baseline for calculation of normals 
@@ -422,7 +422,7 @@ axs.set_title(titlestr, fontsize=fontsize)
 axs.tick_params(labelsize=fontsize)   
 if use_fahrenheit == True:
     axs.set_xlim(pd.to_datetime('1700-01-01'), pd.to_datetime('2021-12-01'))
-    axs.set_ylim(45,55)
+    axs.set_ylim(35,60)
 else:
     axs.set_xlim(pd.to_datetime('1700-01-01'), pd.to_datetime('2021-12-01'))
     axs.set_ylim(-20,40)
@@ -450,7 +450,7 @@ if plot_methodology == True:
     axs.tick_params(labelsize=fontsize)   
     if use_fahrenheit == True:
         axs.set_xlim(pd.to_datetime('1700-01-01'), pd.to_datetime('2021-12-01'))
-        axs.set_ylim(45,55)
+        axs.set_ylim(35,60)
     else:
         ax.set_ylim(-20,40)
     fig.tight_layout()
@@ -472,7 +472,7 @@ if plot_methodology == True:
     axs.tick_params(labelsize=fontsize)   
     if use_fahrenheit == True:
         axs.set_xlim(pd.to_datetime('1700-01-01'), pd.to_datetime('2021-12-01'))
-        axs.set_ylim(45,55)
+        axs.set_ylim(35,60)
     else:
         ax.set_ylim(-20,40)
     fig.tight_layout()
@@ -496,7 +496,7 @@ if plot_methodology == True:
     axs.tick_params(labelsize=fontsize)   
     if use_fahrenheit == True:
         axs.set_xlim(pd.to_datetime('1700-01-01'), pd.to_datetime('2021-12-01'))
-        axs.set_ylim(45,55)
+        axs.set_ylim(35,60)
     else:
         ax.set_ylim(-20,40)
     fig.tight_layout()
@@ -520,7 +520,7 @@ if plot_methodology == True:
     axs.tick_params(labelsize=fontsize)   
     if use_fahrenheit == True:
         axs.set_xlim(pd.to_datetime('1700-01-01'), pd.to_datetime('2021-12-01'))
-        axs.set_ylim(45,55)
+        axs.set_ylim(35,60)
     else:
         ax.set_ylim(-20,40)
     fig.tight_layout()
@@ -545,7 +545,7 @@ if plot_methodology == True:
     axs.tick_params(labelsize=fontsize)   
     if use_fahrenheit == True:
         axs.set_xlim(pd.to_datetime('1700-01-01'), pd.to_datetime('2021-12-01'))
-        axs.set_ylim(45,55)
+        axs.set_ylim(35,60)
     else:
         ax.set_ylim(-20,40)
     fig.tight_layout()
@@ -577,7 +577,7 @@ if plot_methodology == True:
     axs.tick_params(labelsize=fontsize)   
     if use_fahrenheit == True:
         axs.set_xlim(pd.to_datetime('1700-01-01'), pd.to_datetime('2021-12-01'))
-        axs.set_ylim(45,55)
+        axs.set_ylim(35,60)
     else:
         ax.set_ylim(-20,40)
     fig.tight_layout()
