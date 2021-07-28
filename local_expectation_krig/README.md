@@ -15,7 +15,9 @@ Usage:
 ------
 
 `python3 calc_expectation.py`
+
 `python3 calc_expectation.py -filter=01`
+
 `python3 calc_expectation.py -years=1750,2021`
 
 
