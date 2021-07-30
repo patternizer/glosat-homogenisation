@@ -49,9 +49,9 @@ def make_shell_command(stationcode):
 
 if __name__ == "__main__":
     
-#    for i in range(100):        
-    for i in range(5):        
-        file_out = 'df_temp_expect_{0:02d}.pkl'.format()
+#   for stationcode in range(100):        
+    for stationcode in range(5):        
+        file_out = 'df_temp_expect' + '_' + str(stationcode).zfill(2) + '.pkl'
         if not os.path.exists(file_out):
             make_shell_command(stationcode)
 
