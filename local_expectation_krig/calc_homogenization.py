@@ -355,4 +355,7 @@ djoin = pandas.merge( dflt, ddst, how="outer", on=["year","stationcode"] )
 
 # save the data
 print("Saving data\n",flush=True)
-djoin.to_pickle( "df_temp_homog.pkl", compression="bz2" )
+if stationfilter:
+  djoin.to_pickle( "df_temp_homog_{:s}.pkl".format(stationfilter.zfill(2)), compression="bz2" )
+else:
+  djoin.to_pickle( "df_temp_homog.pkl", compression="bz2" )
