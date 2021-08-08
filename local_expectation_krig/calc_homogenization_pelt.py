@@ -172,13 +172,13 @@ def fitnorms( y, flags, nfourier=0 ):
     p += 1
   # constant shifts for fragments
   for f in range(nfrags-1):
-    x[flags==f,p] = 1.0
+    x[:,p] = 1.0*(flags==f)
     p += 1
   # cosine shifts for fragments
   for n in range(nfourier):
     for f in range(nfrags-1):
-      x[flags==f,p  ] = _cost[flags==f,n]
-      x[flags==f,p+1] = _sint[flags==f,n]
+      x[:,p  ] = _cost[:,n]*(flags==f)
+      x[:,p+1] = _sint[:,n]*(flags==f)
       p += 2
   xm = x[ ~numpy.isnan(y), : ]
   ym = y[ ~numpy.isnan(y) ]
