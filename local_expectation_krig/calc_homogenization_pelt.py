@@ -149,39 +149,37 @@ def changemissing(dnorm,**opts):
 
 
 # OLS fit for norms using seasonal cycle and fragment means
-def fitnorms( y, flags, method="constant" ):
+def fitnorms( y, flags, nfourier=0 ):
   """
   Fit station fragment norms station fragment using mean and seasonal cycle 
   
   Parameters:
     y (vector of float): Station temperature series
     flags (vector of uint8): Station fragment flags
-    method (string): Fitting of annual cycle changes "constant","cosine"
+    nfourier (int): Number of fourier orders used to fit annual cycle changes
 
   Returns:
     (vector of float): vector of norms by month
   """
   frags = numpy.unique(flags)
-  months = numpy.arange(y.shape[0])%12
   nfrags = frags.shape[0]
-  if method == "constant":
-    npar = 12 +   (nfrags-1)
-  if method == "cosine":
-    npar = 12 + 3*(nfrags-1)  
+  npar = 12 + (nfrags-1)*(1+2*nfourier)
   x = numpy.zeros([y.shape[0],npar])
   # annual cycle
+  p = 0
   for m in range(12):
-    x[m::12,m] = 1.0
+    x[m::12,p] = 1.0
+    p += 1
   # constant shifts for fragments
   for f in range(nfrags-1):
-    x[flags==f,f+12] = 1.0
+    x[flags==f,p] = 1.0
+    p += 1
   # cosine shifts for fragments
-  if method == "cosine":
-    cost = numpy.resize( numpy.cos( numpy.arange(12) * numpy.pi / 6.0 ), y.shape )
-    sint = numpy.resize( numpy.sin( numpy.arange(12) * numpy.pi / 6.0 ), y.shape )
+  for n in range(nfourier):
     for f in range(nfrags-1):
-      x[flags==f,f+12+1*(nfrags-1)] = cost[flags==f]
-      x[flags==f,f+12+2*(nfrags-1)] = sint[flags==f]
+      x[flags==f,p  ] = _cost[flags==f,n]
+      x[flags==f,p+1] = _sint[flags==f,n]
+      p += 2
   xm = x[ ~numpy.isnan(y), : ]
   ym = y[ ~numpy.isnan(y) ]
   if ym.shape[0] < xm.shape[1]: return numpy.zeros_like(y)
@@ -196,6 +194,7 @@ def fitnorms( y, flags, method="constant" ):
 year0,year1 = 1780,2020
 base0,base1 = 1961,1990
 stationfilter = None
+nfourier = 0
 
 for arg in sys.argv[1:]:
   if arg.split("=")[0] == "-years":    # year calc
@@ -204,6 +203,8 @@ for arg in sys.argv[1:]:
     base0,base1 = [int(x) for x in arg.split("=")[1].split(",")]
   if arg.split("=")[0] == "-filter":    # year calc
     stationfilter = arg.split("=")[1]
+  if arg.split("=")[0] == "-fourier":    # year calc
+    nfourier = int(arg.split("=")[1])
 
 # years and months
 bases  = list(range(base0,base1+1))
@@ -262,6 +263,13 @@ for r in range(dcodes.shape[0]):
 # set up covariance data
 cov = numpy.exp( -dists/900.0 )
 
+# tabulate fourier coefficients
+_cost = numpy.zeros([nmon,nfourier])
+_sint = numpy.zeros([nmon,nfourier])
+for n in range(nfourier):
+  _cost[:,n] = numpy.cos( numpy.arange(nmon) * numpy.pi * (n+1) / 6.0 )
+  _sint[:,n] = numpy.sin( numpy.arange(nmon) * numpy.pi * (n+1) / 6.0 )
+
 # baseline period mask
 basemask = numpy.logical_and( dates[:,0] >= base0, dates[:,0] < base1 )
 
@@ -317,8 +325,8 @@ for cycle in range(ncycle):
   # update station baselines to match filled data
   print( numpy.unique(flags) )
   for s in range(nstn):
-    norms[:,s] = fitnorms( data[:,s]-fill[:,s], flags[:,s], method="constant" )
-  
+    norms[:,s] = fitnorms( data[:,s]-fill[:,s], flags[:,s], nfourier=nfourier )
+
 
 # DATA OUTPUT
 # We need to add missing years (rows) to the source dataframe, then add
