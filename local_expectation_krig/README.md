@@ -7,11 +7,15 @@ This directory contains python code for calculation of a local
 expectation for every station on a given period using hold-out
 kriging. There are three programs:
 
-* `calc_expectation.py`    Calculate the local expectations
-* `plot_expectation.py`    Plot the local expectations
-* `plot_neighbours.py`     Make maps and html pages for navigating plots
-* `plot_changepoints.py`   Make cumulative sum plots for deviation from expected
-* `calc_homogenization.py` Proof-of-concept homogenization program
+* `calc_expectation.py`         Calculate the local expectations
+* `plot_expectation.py`         Plot the local expectations
+* `plot_neighbours.py`          Make maps and html pages for navigating plots
+* `plot_changepoints.py`        Make cumulative sum plots for deviation from expected
+* `calc_homogenization.py`      Proof-of-concept homogenization program
+* `calc_homogenization_pelt.py` Proof-of-concept homogenization program
+* `calc_homogenization_full.py` Framework homogenization program
+* `glosat_homogenization.py`    Support functions for homogenization
+* `calc_errors.py`              Program to estimate station/site uncertainties
 
 Usage:
 ------
@@ -21,6 +25,8 @@ Usage:
 `python3 calc_expectation.py -filter=01`
 
 `python3 calc_expectation.py -years=1750,2021`
+
+`python3 calc_errors.py -years=1780,2020`
 
 
 calc_expectations.py
@@ -62,3 +68,10 @@ calc_homogenization.py
 
 The command line options are the same as calc_expectation.py
 Output goes to `./df_temp_homog.pkl`
+
+calc_errors.py
+--------------------
+
+The command line options are the same as calc_expectation.py
+Output goes to `./df_temp_errors.pkl`
+
