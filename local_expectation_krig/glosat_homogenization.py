@@ -99,7 +99,12 @@ def solve_norms( obs, flags, cov, tor, nfourier ):
     nfourier (int): number of Fourier orders to use in norms
   
   Returns:
-    [nmon,nstn] (matrix of float)
+    tuple of:
+      [nmon,nstn] norms (matrix of float)
+      [nmon,nstn] uncertainties in norms (matrix of float)
+      [npar] parameter mappings (vector of 2-tuples)
+      [npar] parameter values (vector)
+      [npar,npar] covariance matrix (matrix)
   """
   nmon, nstn = obs.shape
 
@@ -187,19 +192,31 @@ def solve_norms( obs, flags, cov, tor, nfourier ):
   # solve the equations
   print("SOLVE",numpy.count_nonzero(numpy.isnan(A)),numpy.count_nonzero(numpy.isnan(B)))
   # now solve
-  X = numpy.dot( numpy.linalg.pinv( numpy.dot( A.T, A ) ),
-                 numpy.dot( A.T, B ) )
+  Q = numpy.linalg.pinv( numpy.dot( A.T, A ) )
+  X = numpy.dot( Q, numpy.dot( A.T, B ) )
 
+  # get uncertainties
+  rss = numpy.sum( numpy.power( numpy.dot(A,X)-B, 2 ) ) / ( neqn-npar )
+  Q *= rss
+  E = numpy.sqrt( numpy.diagonal( Q ) )
+
+  # reshape to match data
   X.shape = [npar,nblock]
+  E.shape = [npar,nblock]
   for b in range(nblock): print(X[:,b])
-  # store norms
+  for b in range(nblock): print(E[:,b])
+
+  # store norms and uncertainties
   norms = numpy.full( [nmon,nstn], numpy.nan )
+  norme = numpy.full( [nmon,nstn], numpy.nan )
   for p in range(npar):
     f1,s1 = pars[p]
     mmsk = flags[:,s1]==f1
     norms[mmsk,s1] = numpy.dot(wmfourier,X[p,:])[mmsk]
+    norme[mmsk,s1] = numpy.dot(wmfourier,E[p,:])[mmsk]
+
   # and return them
-  return norms
+  return ( norms, norme, pars, X, Q )
 
 
 # calculate local expectation using kriging with approximate hold-out

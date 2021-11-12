@@ -164,7 +164,7 @@ def main():
   # first full matrix normalization
   flags = numpy.full( dnorm.shape, 0, numpy.uint8 )
   #norms = numpy.zeros( data.shape )
-  norms = glosat_homogenization.solve_norms( dnorm, flags, cov, tor, nfourier )
+  norms,norme,pars,X,Q = glosat_homogenization.solve_norms( dnorm, flags, cov, tor, nfourier )
   dfull = dnorm - norms
   dlexp,var = glosat_homogenization.local_expectation( dfull, cov, tor )
   print( "INIT ", numpy.nanstd(dnorm), numpy.nanstd(dfull), numpy.nanstd(dlexp) ) 
@@ -173,9 +173,28 @@ def main():
   for cycle in range(ncycle):
     for s in range(nstn):
       flags[:,s] = changemissing( dnorm[:,s] - dlexp[:,s], nbuf=12 )
-    norms = glosat_homogenization.solve_norms( dnorm, flags, cov, tor, nfourier )
+    norms,norme,pars,X,Q = glosat_homogenization.solve_norms( dnorm, flags, cov, tor, nfourier )
     dfull = dnorm - norms
     dlexp,var = glosat_homogenization.local_expectation( dfull, cov, tor )
+
+  # covariance data
+  print(Q)
+  covx,covy,covz = [],[],[]
+  for i in range(len(pars)):
+    for j in range(len(pars)):
+      f1,s1 = pars[i]
+      f2,s2 = pars[j]
+      covx.append(dists[s1,s2])
+      covy.append(Q[i,j])
+      covz.append(numpy.count_nonzero(numpy.logical_and(flags[:,s1]==f1,flags[:,s2]==f2)))
+  cov = pandas.DataFrame({"dist":covx,"cov":covy,"overlap":covz})
+  print("Self:              ",numpy.mean(cov["cov"][cov["dist"]<0.5]))
+  print("Other:             ",numpy.mean(cov["cov"][cov["dist"]>0.5]))
+  print("Self,  overlap:    ",numpy.mean(cov["cov"][numpy.logical_and(cov["dist"]<0.5,cov["overlap"]>0.5)]))
+  print("Self,  no overlap: ",numpy.mean(cov["cov"][numpy.logical_and(cov["dist"]<0.5,cov["overlap"]<0.5)]))
+  print("Other, overlap:    ",numpy.mean(cov["cov"][numpy.logical_and(cov["dist"]>0.5,cov["overlap"]>0.5)]))
+  print("Other, no overlap: ",numpy.mean(cov["cov"][numpy.logical_and(cov["dist"]>0.5,cov["overlap"]<0.5)]))
+  cov.to_csv("cov.csv",sep=" ",index=False)
 
   # empirical variance estimation
   d2 = (dfull-dlexp)**2
