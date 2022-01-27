@@ -74,6 +74,7 @@ def main():
   tor = 0.1
   nfourier = 0
   ncycle   = 0
+  rebaseline = True
   ifile = None
   ofile = None
 
@@ -92,6 +93,8 @@ def main():
       nfourier = int(arg.split("=")[1])
     if arg.split("=")[0] == "-cycles":   # number of cycles of homogenization
       ncycle   = int(arg.split("=")[1])
+    if arg.split("=")[0] == "-no-baseline": # disable fit baseline
+      rebaseline = False
 
   # other defaults
   if ifile == None: ifile = "../DATA/df_temp.pkl"
@@ -158,18 +161,32 @@ def main():
   cov = numpy.exp( -dists/900.0 )
 
   # simple normalization for annual cycle
+  # -------------------------------------
+  # This step does a basic anomaly calculation to remove the bulk of the annual cycle
+  # so that we don't need to deal with those parameters in the full matrix norm calcualtion.
   pnorm = glosat_homogenization.simple_norms( data )
   dnorm = data - pnorm
-  print( "INIT ", numpy.nanstd(data), numpy.nanstd(pnorm), numpy.nanstd(dnorm) ) 
+  print( "INIT ", numpy.nanstd(data), numpy.nanstd(pnorm), numpy.nanstd(dnorm) )
+
   # first full matrix normalization
+  # -------------------------------
+  # We create an empyty array of station breakpoint flags in order to set norms
+  # using the full matrix method for complete station records.
   flags = numpy.full( dnorm.shape, 0, numpy.uint8 )
-  #norms = numpy.zeros( data.shape )
   norms,norme,pars,X,Q = glosat_homogenization.solve_norms( dnorm, flags, cov, tor, nfourier )
   dfull = dnorm - norms
-  dlexp,var = glosat_homogenization.local_expectation( dfull, cov, tor )
-  print( "INIT ", numpy.nanstd(dnorm), numpy.nanstd(dfull), numpy.nanstd(dlexp) ) 
 
-  # now iteratively fit baselines based on all available data
+  # calculate local expectations
+  # ----------------------------
+  # Now we calculate a local expectation at the location of each station using the
+  # anomalies.
+  dlexp,var = glosat_homogenization.local_expectation( dfull, cov, tor )
+  print( "INIT ", numpy.nanstd(dnorm), numpy.nanstd(dfull), numpy.nanstd(dlexp) )
+
+  # Iteratively find breakpoints
+  # ----------------------------
+  # We loop over n cycles, finding breakpoints from the difference between a station and
+  # its expectation, then updateing the norms and expectations.
   for cycle in range(ncycle):
     for s in range(nstn):
       flags[:,s] = changemissing( dnorm[:,s] - dlexp[:,s], nbuf=12 )
@@ -177,6 +194,18 @@ def main():
     dfull = dnorm - norms
     dlexp,var = glosat_homogenization.local_expectation( dfull, cov, tor )
 
+  # optional fitting to baseline
+  # ----------------------------
+  # If required, fit the resulting expectations on the baseline window,
+  # then fit the stations to the baselines.
+  if rebaseline:
+    dlexpm = dlexp[basemask,:]
+    for m in range(12):
+      dlexp[m::12,:] -= numpy.nanmean( dlexpm[m::12,:], axis=0 )
+
+  # Output
+  # ------
+  # The rest of the calculation is just collecting data for output.
   # covariance data
   print(Q)
   covx,covy,covz = [],[],[]
@@ -201,11 +230,6 @@ def main():
   vmsk = numpy.logical_and( ~numpy.isnan(d2), var>0.0 )
   var *= numpy.mean( d2[vmsk] ) / numpy.mean( var[vmsk] )
 
-  # fit expectations to baselines
-  dlexpm = dlexp[basemask,:]
-  for m in range(12):
-    dlexp[m::12,:] -= numpy.nanmean( dlexpm[m::12,:], axis=0 )
-  
   # update station baselines to match filled data
   datan = data - norms
   diff = dlexp - datan
