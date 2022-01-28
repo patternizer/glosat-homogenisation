@@ -13,56 +13,7 @@ Arguments:
 
 If cycles is zero (the default), then calculate local expectation only.
 """
-import sys, math, numpy, pandas, ruptures, glosat_homogenization
-
-
-# Change point detection using Killick 2012, Truong 2020
-def changepoints( dorig, **opts ):
-  """
-  Change point detection using PELT (Killick 2012),
-  implemented in the ruptures package (Truong 2020)
-  
-  Parameters:
-    dorig (vector of float): original data with no seasonal cycle, e.g.
-      difference between obs and local expectation. No missing values.
-    opts (dictionary): additional options, including:
-      "nbuf": minimum number of months between changepoints
-    
-  Returns:
-    (list of float): list of indices of changepoints
-  """  
-  min_size = opts["nbuf"]
-  penalty_value = 10
-  algo = ruptures.KernelCPD(kernel="linear",min_size=min_size).fit(dorig)
-  #algo = ruptures.Pelt(model="l2", min_size=min_size).fit(dorig)
-  result = algo.predict(pen=penalty_value)
-  return result[:-1]
-
-
-# calculate changepoints on data with breaks
-  """
-  Change point detection wrapper to allow missing data and return a
-  vector of flags
-  
-  Parameters:
-    dorig (vector of float): original data with no seasonal cycle, e.g.
-      difference between obs and local expectation. No missing values.
-    opts (dictionary): additional options for changepoints function
-    
-  Returns:
-    (vector of unit8): vector of station fragment flags
-  """  
-def changemissing( dnorm, **opts ):
-  mask = ~numpy.isnan(dnorm)
-  diff = dnorm[mask]
-  chg = []
-  if diff.shape[0] > 2*opts["nbuf"]: chg = changepoints(diff,**opts)
-  index = numpy.arange( dnorm.shape[0] )[mask]
-  flags = numpy.full( dnorm.shape, 0, numpy.uint8 )
-  for i in chg:
-    flags[index[i]:] += 1
-  return flags
-
+import sys, math, numpy, pandas, glosat_homogenization
 
 
 # MAIN PROGRAM
@@ -73,7 +24,6 @@ def main():
   stationfilter = None
   tor = 0.1
   nfourier = 0
-  ncycle   = 0
   rebaseline = True
   ifile = None
   ofile = None
@@ -91,8 +41,8 @@ def main():
       stationfilter = arg.split("=")[1]
     if arg.split("=")[0] == "-fourier":  # number of fourier orders
       nfourier = int(arg.split("=")[1])
-    if arg.split("=")[0] == "-cycles":   # number of cycles of homogenization
-      ncycle   = int(arg.split("=")[1])
+    if arg.split("=")[0] == "-fourier":  # number of fourier orders
+      nfourier = int(arg.split("=")[1])
     if arg.split("=")[0] == "-no-baseline": # disable fit baseline
       rebaseline = False
 
@@ -183,17 +133,6 @@ def main():
   dlexp,var = glosat_homogenization.local_expectation( dfull, cov, tor )
   print( "INIT ", numpy.nanstd(dnorm), numpy.nanstd(dfull), numpy.nanstd(dlexp) )
 
-  # Iteratively find breakpoints
-  # ----------------------------
-  # We loop over n cycles, finding breakpoints from the difference between a station and
-  # its expectation, then updateing the norms and expectations.
-  for cycle in range(ncycle):
-    for s in range(nstn):
-      flags[:,s] = changemissing( dnorm[:,s] - dlexp[:,s], nbuf=12 )
-    norms,norme,pars,X,Q = glosat_homogenization.solve_norms( dnorm, flags, cov, tor, nfourier )
-    dfull = dnorm - norms
-    dlexp,var = glosat_homogenization.local_expectation( dfull, cov, tor )
-
   # calculate uncertainties
   # -----------------------
   # empirical variance estimation
@@ -213,25 +152,7 @@ def main():
   # Output
   # ------
   # The rest of the calculation is just collecting data for output.
-  # covariance data
-  print(Q)
-  covx,covy,covz = [],[],[]
-  for i in range(len(pars)):
-    for j in range(len(pars)):
-      f1,s1 = pars[i]
-      f2,s2 = pars[j]
-      covx.append(dists[s1,s2])
-      covy.append(Q[i,j])
-      covz.append(numpy.count_nonzero(numpy.logical_and(flags[:,s1]==f1,flags[:,s2]==f2)))
-  cov = pandas.DataFrame({"dist":covx,"cov":covy,"overlap":covz})
-  print("Self:              ",numpy.mean(cov["cov"][cov["dist"]<0.5]))
-  print("Other:             ",numpy.mean(cov["cov"][cov["dist"]>0.5]))
-  print("Self,  overlap:    ",numpy.mean(cov["cov"][numpy.logical_and(cov["dist"]<0.5,cov["overlap"]>0.5)]))
-  print("Self,  no overlap: ",numpy.mean(cov["cov"][numpy.logical_and(cov["dist"]<0.5,cov["overlap"]<0.5)]))
-  print("Other, overlap:    ",numpy.mean(cov["cov"][numpy.logical_and(cov["dist"]>0.5,cov["overlap"]>0.5)]))
-  print("Other, no overlap: ",numpy.mean(cov["cov"][numpy.logical_and(cov["dist"]>0.5,cov["overlap"]<0.5)]))
-  cov.to_csv("cov.csv",sep=" ",index=False)
-
+  
   # update station baselines to match filled data
   diff = data - norms - dlexp
   for s in range(nstn):
