@@ -176,6 +176,7 @@ def main():
   # we need to do this in two steps because updating the dataframe is very slow
   print("Making data\n",flush=True)
   nvals = numpy.full( [ddst.shape[0],12], numpy.nan )
+  nvale = numpy.full( [ddst.shape[0],12], numpy.nan )
   evals = numpy.full( [ddst.shape[0],12], numpy.nan )
   svals = numpy.full( [ddst.shape[0],12], numpy.nan )
   for r in range(len(ddst)):
@@ -185,22 +186,26 @@ def main():
     if year0 <= year <= year1 and codes[j] == code:
       i = 12*(year-year0)
       nvals[r,:] = norms[i:i+12,j]
+      nvale[r,:] = norme[i:i+12,j]
       evals[r,:] = dlexp[i:i+12,j]
       svals[r,:] = numpy.sqrt(var[i:i+12,j])
     if r%1000 == 0: print(" row ",r,flush=True)
 
   # add the new columns to the source data frame
   print("Copying data\n",flush=True)
-  ncols = ["n1","n2","n3","n4","n5","n6","n7","n8","n9","n10","n11","n12"]
-  ecols = ["e1","e2","e3","e4","e5","e6","e7","e8","e9","e10","e11","e12"]
-  scols = ["s1","s2","s3","s4","s5","s6","s7","s8","s9","s10","s11","s12"]
+  ncols = [ "n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12"]
+  ncole = ["ne1","ne2","ne3","ne4","ne5","ne6","ne7","ne8","ne9","ne10","ne11","ne12"]
+  ecols = [ "e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8", "e9", "e10", "e11", "e12"]
+  scols = [ "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "s12"]
   for m in range(12):
     ddst[ncols[m]] = nvals[:,m]
+  for m in range(12):
+    ddst[ncole[m]] = nvale[:,m]
   for m in range(12):
     ddst[ecols[m]] = evals[:,m]
   for m in range(12):
     ddst[scols[m]] = svals[:,m]
-  print( numpy.nanmean(ddst.loc[:,"n1"]), numpy.nanmean(ddst.loc[:,"e1"]), numpy.nanmean(ddst.loc[:,"s1"]) )
+  print( numpy.nanmean(ddst.loc[:,"n1"]), numpy.nanmean(ddst.loc[:,"ne1"]), numpy.nanmean(ddst.loc[:,"e1"]), numpy.nanmean(ddst.loc[:,"s1"]) )
 
   # now join with the original data
   djoin = pandas.merge( dflt, ddst, how="outer", on=["year","stationcode"] )
