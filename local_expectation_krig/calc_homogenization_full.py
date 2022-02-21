@@ -73,7 +73,7 @@ def main():
   stationfilter = None
   tor = 0.1
   nfourier = 0
-  ncycle   = 0
+  ncycle   = 10
   rebaseline = True
   ifile = None
   ofile = None

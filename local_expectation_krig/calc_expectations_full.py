@@ -24,6 +24,7 @@ def main():
   stationfilter = None
   tor = 0.1
   nfourier = 0
+  ncycle   = 10
   rebaseline = True
   ifile = None
   ofile = None
@@ -41,8 +42,8 @@ def main():
       stationfilter = arg.split("=")[1]
     if arg.split("=")[0] == "-fourier":  # number of fourier orders
       nfourier = int(arg.split("=")[1])
-    if arg.split("=")[0] == "-fourier":  # number of fourier orders
-      nfourier = int(arg.split("=")[1])
+    if arg.split("=")[0] == "-cycles":   # number of cycles of homogenization
+      ncycle   = int(arg.split("=")[1])
     if arg.split("=")[0] == "-no-baseline": # disable fit baseline
       rebaseline = False
 
