@@ -85,6 +85,50 @@ def simple_norms( obs ):
   return norms
 
 
+# fit station fragment norms
+def fit_norms( obs, flags, nfourier=0 ):
+  """
+  Fit station fragment norms station fragment using mean and seasonal cycle 
+  
+  Parameters:
+    [nmon,nstn] obs (vector of float): Station temperature series
+    [nmon,nstn] flags (vector of uint8): Station fragment flags
+    nfourier (int): Number of fourier orders used to fit annual cycle changes
+
+  Returns:
+    [nmon,nstn] (vector of float): vector of norms by month
+  """
+  norms = numpy.zeros_like( obs )
+  for s in range(obs.shape[1]):
+    y = obs[:,s]
+    flagstn = flags[:,s]
+    frags = numpy.unique(flagstn)
+    nfrags = frags.shape[0]
+    npar = 12 + (nfrags-1)*(1+2*nfourier)
+    x = numpy.zeros([y.shape[0],npar])
+    # annual cycle
+    p = 0
+    for m in range(12):
+      x[m::12,p] = 1.0
+      p += 1
+    # constant shifts for fragments
+    for f in range(nfrags-1):
+      x[:,p] = 1.0*(flagstn==f)
+      p += 1
+    # cosine shifts for fragments
+    for n in range(nfourier):
+      for f in range(nfrags-1):
+        x[:,p  ] = _cost[:,n]*(flagstn==f)
+        x[:,p+1] = _sint[:,n]*(flagstn==f)
+        p += 2
+    xm = x[ ~numpy.isnan(y), : ]
+    ym = y[ ~numpy.isnan(y) ]
+    if ym.shape[0] < xm.shape[1]: return numpy.zeros_like(y)
+    p = numpy.linalg.lstsq(xm,ym,rcond=None)[0]
+    norms[:,s] = numpy.dot(x,p)
+  return norms
+
+
 # solve for station fragment norms
 def solve_norms( obs, flags, cov, tor, nfourier ):
   """
