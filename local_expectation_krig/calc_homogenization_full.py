@@ -160,6 +160,15 @@ def main():
   # set up covariance data
   cov = numpy.exp( -dists/900.0 )
 
+  # set breakpoint flags - normally all empty, but we can use extreme values to mark known breaks
+  # FIXME - update this once the input data contain breakpoint flags
+  flags = numpy.full( data.shape, 0, numpy.uint8 )
+  for s in range(nstn): flags[:,s] = data[:,s]>100.0
+  flags = numpy.cumsum(flags,axis=0)
+  print("Data flag removal ",numpy.nanmin(data),numpy.nanmax(data))
+  data[data>100.0] -= 200.0
+  print("Data flag removal ",numpy.nanmin(data),numpy.nanmax(data))
+
   # simple normalization for annual cycle
   # -------------------------------------
   # This step does a basic anomaly calculation to remove the bulk of the annual cycle
@@ -172,7 +181,6 @@ def main():
   # -------------------------------
   # We create an empyty array of station breakpoint flags in order to set norms
   # using the full matrix method for complete station records.
-  flags = numpy.full( dnorm.shape, 0, numpy.uint8 )
   norms,norme,pars,X,Q = glosat_homogenization.solve_norms( dnorm, flags, cov, tor, nfourier )
   dfull = dnorm - norms
 
@@ -193,6 +201,8 @@ def main():
     norms,norme,pars,X,Q = glosat_homogenization.solve_norms( dnorm, flags, cov, tor, nfourier )
     dfull = dnorm - norms
     dlexp,var = glosat_homogenization.local_expectation( dfull, cov, tor )
+
+  print( "NORMS ", numpy.std(norms), numpy.sum(flags) )
 
   # calculate uncertainties
   # -----------------------
