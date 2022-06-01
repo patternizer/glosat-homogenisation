@@ -181,7 +181,9 @@ def main():
   # -------------------------------
   # We create an empyty array of station breakpoint flags in order to set norms
   # using the full matrix method for complete station records.
-  norms,norme,pars,X,Q = glosat_homogenization.solve_norms( dnorm, flags, cov, tor, nfourier )
+  # For some reason starting from zero norms works better than solving from the initial data
+  #norms,norme,pars,X,Q = glosat_homogenization.solve_norms( dnorm, flags, cov, tor, nfourier )
+  norms,norme = numpy.full( data.shape, 0.0 ), numpy.full( data.shape, numpy.nan )
   dfull = dnorm - norms
 
   # calculate local expectations

@@ -181,6 +181,8 @@ def main():
   # -------------------------------
   # We create an empyty array of station breakpoint flags in order to set norms
   # using the full matrix method for complete station records.
+  # For some reason starting from zero norms works better than solving from the initial data
+  #norms,norme = glosat_homogenization.solve_norms_iter( dnorm, flags, cov, tor, nfourier )
   norms,norme = numpy.full( data.shape, 0.0 ), numpy.full( data.shape, numpy.nan )
   dfull = dnorm - norms
 
@@ -203,6 +205,12 @@ def main():
     dlexp,var = glosat_homogenization.local_expectation( dfull, cov, tor )
 
   print( "NORMS ", numpy.std(norms), numpy.sum(flags) )
+
+  # calculate norm uncertainties
+  # ----------------------------
+  norms,norme = glosat_homogenization.solve_norms_iter_err( dnorm - dlexp, flags, cov, tor, nfourier=nfourier )
+  dfull = dnorm - norms
+  dlexp,var = glosat_homogenization.local_expectation( dfull, cov, tor )
 
   # calculate uncertainties
   # -----------------------
@@ -227,12 +235,12 @@ def main():
   # print(Q)
   # covx,covy,covz = [],[],[]
   # for i in range(len(pars)):
-    # for j in range(len(pars)):
-      # f1,s1 = pars[i]
-      # f2,s2 = pars[j]
-      # covx.append(dists[s1,s2])
-      # covy.append(Q[i,j])
-      # covz.append(numpy.count_nonzero(numpy.logical_and(flags[:,s1]==f1,flags[:,s2]==f2)))
+  #   for j in range(len(pars)):
+  #     f1,s1 = pars[i]
+  #     f2,s2 = pars[j]
+  #     covx.append(dists[s1,s2])
+  #     covy.append(Q[i,j])
+  #     covz.append(numpy.count_nonzero(numpy.logical_and(flags[:,s1]==f1,flags[:,s2]==f2)))
   # cov = pandas.DataFrame({"dist":covx,"cov":covy,"overlap":covz})
   # print("Self:              ",numpy.mean(cov["cov"][cov["dist"]<0.5]))
   # print("Other:             ",numpy.mean(cov["cov"][cov["dist"]>0.5]))
