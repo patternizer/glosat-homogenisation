@@ -20,7 +20,7 @@ import sys, math, numpy, pandas, glosat_homogenization
 # MAIN PROGRAM
 def main():
   # command line arguments
-  year0,year1 = 1780,2020
+  year0,year1 = 1781,2022
   base0,base1 = 1961,1990
   stationfilter = None
   crossval = None
